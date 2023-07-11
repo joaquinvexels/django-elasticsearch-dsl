@@ -144,13 +144,21 @@ class Command(BaseCommand):
     def _populate(self, models, options):
         parallel = options['parallel']
         for doc in registry.get_documents(models):
+            count = doc().get_queryset_count().count()
             self.stdout.write("Indexing {} '{}' objects {}".format(
-                doc().get_queryset().count() if options['count'] else "all",
+                count if options['count'] else "all",
                 doc.django.model.__name__,
                 "(parallel)" if parallel else "")
             )
-            qs = doc().get_indexing_queryset()
-            doc().update(qs, parallel=parallel, refresh=options['refresh'])
+            total = 10
+            subdocuments = count//total
+            self.stdout.write(f"Subdocuments: {subdocuments}")
+            for index in range(0, subdocuments+1):
+                fi, ti = index*total, min(count, (index+1)*total)
+                self.stdout.write('%d - %d' % (fi, ti))
+                qs = doc().get_indexing_queryset(fi, ti)
+                doc().update(qs, parallel=parallel, refresh=options['refresh'])
+                self.stdout.write('Finish indice %d from %d' % (index, subdocuments))
 
     def _get_alias_indices(self, alias):
         alias_indices = self.es_conn.indices.get_alias(name=alias)

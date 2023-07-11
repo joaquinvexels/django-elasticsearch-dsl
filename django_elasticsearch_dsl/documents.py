@@ -91,17 +91,23 @@ class DocType(DSLDocument):
             model=cls.django.model
         )
 
-    def get_queryset(self):
+    def get_queryset(self, fi, ti):
         """
         Return the queryset that should be indexed by this doc type.
         """
-        return self.django.model._default_manager.all()
+        return self.django.model._default_manager.filter(status=1).order_by('id')[fi:ti]
+    
+    def get_queryset_count(self):
+        """
+        Return the queryset that should be indexed by this doc type.
+        """
+        return self.django.model._default_manager.filter(status=1)
 
-    def get_indexing_queryset(self):
+    def get_indexing_queryset(self, fi, ti):
         """
         Build queryset (iterator) for use by indexing.
         """
-        qs = self.get_queryset()
+        qs = self.get_queryset(fi, ti)
         kwargs = {}
         if DJANGO_VERSION >= (2,) and self.django.queryset_pagination:
             kwargs = {'chunk_size': self.django.queryset_pagination}
